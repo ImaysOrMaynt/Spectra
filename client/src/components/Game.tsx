@@ -6,7 +6,7 @@ import type {
   Team,
 } from "@spectra/shared";
 import type { SpectraActions } from "../useSpectra.js";
-import { Dial } from "./Dial.js";
+import { Meter } from "./Meter.js";
 import { Chat } from "./Chat.js";
 import { Panel } from "./Panel.js";
 import { SpectrumText } from "./Spectral.js";
@@ -149,7 +149,7 @@ function Stage({
         </div>
       )}
 
-      <Dial
+      <Meter
         position={position}
         card={state.card}
         target={state.target}

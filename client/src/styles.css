@@ -811,76 +811,93 @@ button {
   text-shadow: 0 0 14px rgba(255, 224, 138, 0.5);
 }
 
-/* ---------- dial ---------- */
+/* ---------- meter (all text) ---------- */
 
-.dial {
-  width: 100%;
-  max-width: 520px;
+.meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  max-width: 100%;
   margin: 0 auto;
-}
-.dial__svg {
-  width: 100%;
-  height: auto;
-  display: block;
-  overflow: visible;
+  user-select: none;
   touch-action: none;
 }
-.dial--live .dial__svg {
-  cursor: grab;
+.meter--live {
+  cursor: ew-resize;
 }
-.dial--live .dial__svg:active {
-  cursor: grabbing;
+.meter__track {
+  position: relative;
+  padding-top: 1.4em;
 }
-.dial__backing {
-  fill: none;
-  stroke: rgba(140, 160, 220, 0.12);
-  stroke-width: 2;
-}
-.dial__needle-line {
-  stroke: #ffffff;
-  stroke-width: 3;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7));
-}
-.dial__needle-tip {
-  fill: #ffffff;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
-}
-.dial__hub {
-  fill: #0a0a14;
-  stroke: rgba(255, 255, 255, 0.5);
-  stroke-width: 2;
-}
-.dial__hub-dot {
-  fill: #ffffff;
-}
-.dial__target-line {
-  stroke: var(--gold);
-  stroke-width: 2;
-  stroke-dasharray: 3 4;
-  filter: drop-shadow(0 0 6px rgba(255, 224, 138, 0.85));
-}
-.dial__bands {
-  animation: bandfade 0.45s ease;
-}
-@keyframes bandfade {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-}
-.dial__label {
-  font-size: 13px;
-  font-weight: 700;
+.meter__bar,
+.meter__targetrow {
+  font-size: clamp(7px, 2.3vw, 13px);
+  line-height: 1.05;
+  white-space: pre;
+  letter-spacing: 0;
   font-family: inherit;
 }
-.dial__label--left {
-  text-anchor: start;
-  fill: var(--team-a);
+.meter__bar span {
+  animation: meterwave 3.2s ease-in-out infinite;
 }
-.dial__label--right {
-  text-anchor: end;
-  fill: var(--cool);
+@keyframes meterwave {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+.meter__marker {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: clamp(11px, 3vw, 18px);
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+  will-change: left;
+  pointer-events: none;
+}
+.meter__targetrow {
+  animation: bandfade 0.4s ease;
+  letter-spacing: 0;
+}
+.meter__targetrow .tier {
+  font-weight: 700;
+}
+.meter__targetrow .tier--2 {
+  color: rgba(255, 224, 138, 0.5);
+}
+.meter__targetrow .tier--3 {
+  color: rgba(255, 224, 138, 0.82);
+}
+.meter__targetrow .tier--4 {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(255, 224, 138, 0.9);
+}
+@keyframes bandfade {
+  from { opacity: 0; }
+}
+.meter__labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+.meter__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meter__label--l {
+  color: var(--team-a);
+}
+.meter__label--r {
+  color: var(--cool);
+  text-align: right;
 }
 
 /* ---------- roster + chat ---------- */
