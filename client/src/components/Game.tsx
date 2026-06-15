@@ -91,6 +91,26 @@ function ResultPanel({
   );
 }
 
+function BetTally({
+  counts,
+  eligible,
+}: {
+  counts: { left: number; right: number } | null;
+  eligible: number;
+}) {
+  if (!counts) return null;
+  const voted = counts.left + counts.right;
+  return (
+    <div className="bet-tally">
+      <span className="bet-tally__side bet-tally__side--l">◄ left · {counts.left}</span>
+      <span className="bet-tally__mid">
+        {voted}/{eligible} voted
+      </span>
+      <span className="bet-tally__side bet-tally__side--r">{counts.right} · right ►</span>
+    </div>
+  );
+}
+
 function Stage({
   state,
   actions,
@@ -171,19 +191,37 @@ function Stage({
           <div className="stage__bet">
             <p className="stage__role">
               is the real target <strong>left</strong> or <strong>right</strong> of their guess?
+              {secs != null && <span className="bet-timer"> · {secs}s</span>}
             </p>
             <div className="bet-buttons">
-              <button className="btn btn--big" onClick={() => actions.submitBet("left")}>
+              <button
+                className={`btn btn--big ${state.myBet === "left" ? "is-picked" : ""}`}
+                onClick={() => actions.submitBet("left")}
+              >
                 ◄ left
               </button>
-              <button className="btn btn--big" onClick={() => actions.submitBet("right")}>
+              <button
+                className={`btn btn--big ${state.myBet === "right" ? "is-picked" : ""}`}
+                onClick={() => actions.submitBet("right")}
+              >
                 right ►
               </button>
             </div>
+            <p className="bet-hint">
+              {state.myBet
+                ? `you voted ${state.myBet} — tap again to change`
+                : "majority wins · ties are a coin flip"}
+            </p>
+            <BetTally counts={state.betCounts} eligible={state.betEligible} />
           </div>
         )}
         {phase === "bet" && !isOpponent && (
-          <p className="stage__wait">team {otherTeam(activeTeam!)} is betting left or right…</p>
+          <div className="stage__bet">
+            <p className="stage__wait">
+              team {otherTeam(activeTeam!)} is voting{secs != null ? ` · ${secs}s` : ""}…
+            </p>
+            <BetTally counts={state.betCounts} eligible={state.betEligible} />
+          </div>
         )}
 
         {phase === "reveal" && state.result && (

@@ -707,6 +707,38 @@ button {
   display: flex;
   gap: 1rem;
 }
+.btn.is-picked {
+  border-color: var(--cyan);
+  color: #fff;
+  background: rgba(70, 232, 224, 0.12);
+  box-shadow: 0 0 18px rgba(70, 232, 224, 0.35);
+}
+.bet-timer {
+  color: var(--gold);
+  font-weight: 700;
+}
+.bet-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.bet-tally {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+.bet-tally__side--l {
+  color: var(--team-a);
+}
+.bet-tally__side--r {
+  color: var(--team-b);
+}
+.bet-tally__mid {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
 
 .dots::after {
   content: "";

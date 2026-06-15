@@ -27,6 +27,9 @@ export const MIN_PLAYERS_PER_TEAM = 2;
 /** Seconds the reveal screen lingers before auto-advancing to the next round. */
 export const REVEAL_SECONDS = 9;
 
+/** Seconds the opposing team has to vote left/right before the bet resolves. */
+export const BET_SECONDS = 20;
+
 export const MAX_NAME_LENGTH = 16;
 export const MAX_CLUE_LENGTH = 60;
 export const MAX_CHAT_LENGTH = 240;

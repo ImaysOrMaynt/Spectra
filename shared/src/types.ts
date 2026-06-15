@@ -94,7 +94,14 @@ export interface GameStateView {
   /** Current/locked dial position, 0..100. */
   dial: number;
   guessLocked: boolean;
+  /** The resolved bet (shown at reveal); null while voting or if no votes. */
   bet: Side | null;
+  /** Live left/right vote tally during the bet (and final at reveal). */
+  betCounts: { left: number; right: number } | null;
+  /** How many connected opposing players are eligible to vote. */
+  betEligible: number;
+  /** The recipient's own current vote, if they've cast one. */
+  myBet: Side | null;
   /** Secret target, 0..100 — only present for the psychic, or at reveal/over. */
   target: number | null;
   result: RoundResult | null;

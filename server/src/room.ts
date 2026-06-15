@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  BET_SECONDS,
   clampDial,
   DEFAULT_DECK,
   DEFAULT_TARGET_SCORE,
@@ -68,11 +69,15 @@ export class Room {
   dial = 50;
   guessLocked = false;
   bet: Side | null = null;
+  /** Opposing-team left/right votes for the current bet, by player id. */
+  private votes = new Map<string, Side>();
   private result: RoundResult | null = null;
 
   private deck: SpectrumCard[] = [];
   /** When the reveal phase should auto-advance (epoch ms), or null. */
   revealDeadline: number | null = null;
+  /** When the bet phase should auto-resolve (epoch ms), or null. */
+  betDeadline: number | null = null;
 
   constructor(code: string) {
     this.code = code;
@@ -292,8 +297,10 @@ export class Room {
     this.dial = 50;
     this.guessLocked = false;
     this.bet = null;
+    this.votes.clear();
     this.result = null;
     this.revealDeadline = null;
+    this.betDeadline = null;
     this.psychicId = this.pickPsychic(this.activeTeam);
   }
 
@@ -333,19 +340,50 @@ export class Room {
     this.dial = clampDial(position);
     this.guessLocked = true;
     this.phase = "bet";
+    this.votes.clear();
+    this.betDeadline = Date.now() + BET_SECONDS * 1000;
     return OK;
   }
 
-  submitBet(id: string, side: Side): ActionResult {
+  /** Record (or change) an opposing-team member's left/right vote. */
+  castVote(id: string, side: Side): ActionResult {
     if (this.phase !== "bet") return fail("Not betting right now.");
     const player = this.players.get(id);
     if (!player || player.team == null || player.team === this.activeTeam) {
-      return fail("Only the opposing team can bet left or right.");
+      return fail("Only the opposing team can vote left or right.");
     }
-    if (side !== "left" && side !== "right") return fail("Invalid bet.");
-    this.bet = side;
-    this.tally();
+    if (side !== "left" && side !== "right") return fail("Invalid vote.");
+    this.votes.set(id, side);
+
+    // Resolve immediately if every eligible voter agrees; otherwise wait for
+    // the timer (so a split team has time to reconsider).
+    const eligible = this.connectedOf(other(this.activeTeam));
+    if (eligible.length > 0 && eligible.every((p) => this.votes.has(p.id))) {
+      const sides = eligible.map((p) => this.votes.get(p.id));
+      if (sides.every((s) => s === sides[0])) this.resolveBet();
+    }
     return OK;
+  }
+
+  /** Tally the votes into a final bet and move to the reveal. */
+  resolveBet(): void {
+    if (this.phase !== "bet") return;
+    let left = 0;
+    let right = 0;
+    for (const side of this.votes.values()) side === "left" ? left++ : right++;
+    if (left === 0 && right === 0) this.bet = null;
+    else if (left > right) this.bet = "left";
+    else if (right > left) this.bet = "right";
+    else this.bet = Math.random() < 0.5 ? "left" : "right";
+    this.betDeadline = null;
+    this.tally();
+  }
+
+  private voteCounts(): { left: number; right: number } {
+    let left = 0;
+    let right = 0;
+    for (const side of this.votes.values()) side === "left" ? left++ : right++;
+    return { left, right };
   }
 
   private tally(): void {
@@ -429,8 +467,10 @@ export class Room {
     this.dial = 50;
     this.guessLocked = false;
     this.bet = null;
+    this.votes.clear();
     this.result = null;
     this.revealDeadline = null;
+    this.betDeadline = null;
     this.deck = [];
   }
 
@@ -454,10 +494,16 @@ export class Room {
     const revealing = this.phase === "reveal" || this.phase === "over";
     const isPsychic = playerId === this.psychicId;
     const me = this.players.get(playerId);
-    const timer =
-      this.phase === "reveal" && this.revealDeadline
-        ? Math.max(0, Math.ceil((this.revealDeadline - Date.now()) / 1000))
-        : null;
+    const now = Date.now();
+    let timer: number | null = null;
+    if (this.phase === "bet" && this.betDeadline) {
+      timer = Math.max(0, Math.ceil((this.betDeadline - now) / 1000));
+    } else if (this.phase === "reveal" && this.revealDeadline) {
+      timer = Math.max(0, Math.ceil((this.revealDeadline - now) / 1000));
+    }
+    const betCounts = this.phase === "bet" || revealing ? this.voteCounts() : null;
+    const betEligible =
+      this.phase === "bet" ? this.connectedOf(other(this.activeTeam)).length : 0;
 
     return {
       code: this.code,
@@ -475,6 +521,9 @@ export class Room {
       dial: this.dial,
       guessLocked: this.guessLocked,
       bet: revealing ? this.bet : null,
+      betCounts,
+      betEligible,
+      myBet: this.votes.get(playerId) ?? null,
       target: isPsychic || revealing ? this.target : null,
       result: revealing ? this.result : null,
       deckSize: this.deckSize(),

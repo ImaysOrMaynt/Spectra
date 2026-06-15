@@ -27,7 +27,8 @@ interface SocketData {
 }
 
 const rooms = new Map<string, Room>();
-const revealTimers = new Map<string, NodeJS.Timeout>();
+/** One pending auto-advance timer per room, tagged with its target time. */
+const phaseTimers = new Map<string, { at: number; handle: NodeJS.Timeout }>();
 
 // ---- HTTP --------------------------------------------------------------
 
@@ -87,25 +88,52 @@ function winnerText(room: Room): string {
   return `Team ${w} wins ${room.scores[w]}–${room.scores[otherTeam(w)]}!`;
 }
 
-/** Keep the reveal auto-advance timer in sync with the room's phase. */
-function reconcileTimer(room: Room): void {
-  const existing = revealTimers.get(room.code);
-  if (room.phase === "reveal" && room.revealDeadline) {
-    if (existing) return;
-    const delay = Math.max(0, room.revealDeadline - Date.now()) + 50;
-    const timer = setTimeout(() => {
-      revealTimers.delete(room.code);
-      const res = room.advance();
-      if (res.ok) {
-        if (room.phase === "over") systemChat(room, winnerText(room));
-        broadcast(room);
-      }
-    }, delay);
-    revealTimers.set(room.code, timer);
-  } else if (existing) {
-    clearTimeout(existing);
-    revealTimers.delete(room.code);
+/** The timestamp the current phase should auto-advance at, if any. */
+function phaseDeadline(room: Room): number | null {
+  if (room.phase === "bet") return room.betDeadline;
+  if (room.phase === "reveal") return room.revealDeadline;
+  return null;
+}
+
+function clearTimer(code: string): void {
+  const existing = phaseTimers.get(code);
+  if (existing) {
+    clearTimeout(existing.handle);
+    phaseTimers.delete(code);
   }
+}
+
+/** Fires when the bet/reveal countdown elapses with no manual resolution. */
+function onTimerFire(room: Room): void {
+  if (room.phase === "bet") {
+    room.resolveBet();
+    const summary = resultSummary(room);
+    if (summary) systemChat(room, summary);
+    broadcast(room);
+  } else if (room.phase === "reveal") {
+    const res = room.advance();
+    if (res.ok) {
+      if (room.winner()) systemChat(room, winnerText(room));
+      broadcast(room);
+    }
+  }
+}
+
+/** Keep the auto-advance timer in sync with the room's current phase. */
+function reconcileTimer(room: Room): void {
+  const want = phaseDeadline(room);
+  const existing = phaseTimers.get(room.code);
+  if (want == null) {
+    if (existing) clearTimer(room.code);
+    return;
+  }
+  if (existing && existing.at === want) return; // already scheduled
+  if (existing) clearTimeout(existing.handle);
+  const handle = setTimeout(() => {
+    phaseTimers.delete(room.code);
+    onTimerFire(room);
+  }, Math.max(0, want - Date.now()) + 50);
+  phaseTimers.set(room.code, { at: want, handle });
 }
 
 function resultSummary(room: Room): string | null {
@@ -194,10 +222,13 @@ io.on("connection", (socket) => {
 
   socket.on("bet:submit", ({ side }) =>
     act(
-      (r, p) => r.submitBet(p, side),
+      (r, p) => r.castVote(p, side),
       (r) => {
-        const summary = resultSummary(r);
-        if (summary) systemChat(r, summary);
+        // Only announce once the vote actually resolves into the reveal.
+        if (r.phase === "reveal") {
+          const summary = resultSummary(r);
+          if (summary) systemChat(r, summary);
+        }
       },
     ),
   );
@@ -257,9 +288,7 @@ io.on("connection", (socket) => {
     if (!room) return;
     const player = room.markDisconnected(socket.id);
     if (room.size === 0) {
-      const timer = revealTimers.get(room.code);
-      if (timer) clearTimeout(timer);
-      revealTimers.delete(room.code);
+      clearTimer(room.code);
       rooms.delete(room.code);
       return;
     }
