@@ -834,6 +834,10 @@ button {
 }
 .dial__row { display: block; height: 1em; }
 .dial__cell--arc { animation: meterwave 3.4s ease-in-out infinite; }
+.dial__cell--band {
+  font-weight: 800;
+  text-shadow: 0 0 7px currentColor;
+}
 .dial__labels {
   display: flex;
   justify-content: space-between;

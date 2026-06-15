@@ -10,9 +10,9 @@ export const DIAL_MAX = 100;
  * the next ring 3, the outer ring 2, and anything beyond scores nothing.
  */
 export const SCORE_BANDS = [
-  { score: 4, halfWidth: 4 },
-  { score: 3, halfWidth: 10 },
-  { score: 2, halfWidth: 16 },
+  { score: 4, halfWidth: 3 },
+  { score: 3, halfWidth: 7 },
+  { score: 2, halfWidth: 12 },
 ] as const;
 
 /** The widest scoring band; used to keep generated targets fully on-dial. */

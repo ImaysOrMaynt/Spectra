@@ -17,10 +17,12 @@ const arcChar = (t: number): string =>
 const needleChar = (t: number): string =>
   t <= 22.5 || t >= 157.5 ? "─" : t <= 67.5 ? "╱" : t <= 112.5 ? "│" : "╲";
 
+// Distinct colours per scoring tier so the zones read as separate bands:
+// green bullseye, then gold, then orange.
 const TIER_COLOR: Record<number, string> = {
-  2: "rgba(255, 224, 138, 0.5)",
-  3: "rgba(255, 224, 138, 0.82)",
-  4: "#ffe9a8",
+  2: "#ff9344",
+  3: "#ffd23a",
+  4: "#5dff9b",
 };
 
 function tierAt(distance: number): number {
@@ -68,12 +70,19 @@ function buildGrid(
 
   const setArc = (r: number, c: number, theta: number) => {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
-    const tier = showTarget && target != null ? tierAt(Math.abs((180 - theta) / 1.8 - target)) : 0;
-    g[r][c] = {
-      ch: arcChar(theta),
-      color: tier ? TIER_COLOR[tier] : spectralColor(c / (COLS - 1)),
-      kind: tier ? "band" : "arc",
-    };
+    if (showTarget && target != null) {
+      // Tier from each cell's own angle → symmetric about the target.
+      const cellTheta = (Math.atan2((CY - r) / RY, (c - CX) / RX) * 180) / Math.PI;
+      const tier = tierAt(Math.abs((180 - cellTheta) / 1.8 - target));
+      g[r][c] = {
+        ch: arcChar(theta),
+        // Dim the rest of the spectrum so the zone stands out.
+        color: tier ? TIER_COLOR[tier] : spectralColor(c / (COLS - 1), 30, 55),
+        kind: tier ? "band" : "arc",
+      };
+    } else {
+      g[r][c] = { ch: arcChar(theta), color: spectralColor(c / (COLS - 1)), kind: "arc" };
+    }
   };
 
   // Walk the arc, Bresenham-connecting samples so the line never breaks.
