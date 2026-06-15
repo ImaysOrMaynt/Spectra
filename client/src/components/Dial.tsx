@@ -4,8 +4,8 @@ import { spectralColor } from "./Spectral.js";
 
 // The dial is drawn onto a character grid using box-drawing line glyphs —
 // a real ASCII gauge, not a graphic. Colour is applied per character.
-const COLS = 33;
-const ROWS = 9;
+const COLS = 41;
+const ROWS = 13;
 const CX = (COLS - 1) / 2;
 const CY = ROWS - 1;
 const RX = (COLS - 1) / 2;
@@ -28,6 +28,26 @@ function tierAt(distance: number): number {
   return 0;
 }
 
+/** Bresenham line between two grid cells. */
+function linePoints(r0: number, c0: number, r1: number, c1: number): [number, number][] {
+  const pts: [number, number][] = [];
+  const dr = Math.abs(r1 - r0);
+  const dc = Math.abs(c1 - c0);
+  const sr = r0 < r1 ? 1 : -1;
+  const sc = c0 < c1 ? 1 : -1;
+  let err = dc - dr;
+  let r = r0;
+  let c = c0;
+  for (;;) {
+    pts.push([r, c]);
+    if (r === r1 && c === c1) break;
+    const e2 = 2 * err;
+    if (e2 > -dr) { err -= dr; c += sc; }
+    if (e2 < dc) { err += dc; r += sr; }
+  }
+  return pts;
+}
+
 interface Cell {
   ch: string;
   color: string;
@@ -45,38 +65,39 @@ function buildGrid(
   const g: Cell[][] = Array.from({ length: ROWS }, () =>
     Array.from({ length: COLS }, blank),
   );
-  const put = (r: number, c: number, cell: Cell) => {
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = cell;
+
+  const setArc = (r: number, c: number, theta: number) => {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+    const tier = showTarget && target != null ? tierAt(Math.abs((180 - theta) / 1.8 - target)) : 0;
+    g[r][c] = {
+      ch: arcChar(theta),
+      color: tier ? TIER_COLOR[tier] : spectralColor(c / (COLS - 1)),
+      kind: tier ? "band" : "arc",
+    };
   };
 
-  // Arc, coloured left→right across the spectrum.
-  for (let t = 0; t <= 180; t += 0.4) {
+  // Walk the arc, Bresenham-connecting samples so the line never breaks.
+  let prev: [number, number] | null = null;
+  for (let t = 180; t >= 0; t -= 1.5) {
     const c = Math.round(CX + RX * Math.cos(t * D2R));
     const r = Math.round(CY - RY * Math.sin(t * D2R));
-    put(r, c, { ch: arcChar(t), color: spectralColor(c / (COLS - 1)), kind: "arc" });
-  }
-
-  // Recolour the arc within the hidden target's scoring zones.
-  if (showTarget && target != null) {
-    for (let t = 0; t <= 180; t += 0.4) {
-      const tier = tierAt(Math.abs((180 - t) / 1.8 - target));
-      if (!tier) continue;
-      const c = Math.round(CX + RX * Math.cos(t * D2R));
-      const r = Math.round(CY - RY * Math.sin(t * D2R));
-      if (r >= 0 && r < ROWS && c >= 0 && c < COLS && g[r][c].kind === "arc") {
-        g[r][c] = { ch: g[r][c].ch, color: TIER_COLOR[tier], kind: "band" };
-      }
+    if (prev) {
+      for (const [rr, cc] of linePoints(prev[0], prev[1], r, c)) setArc(rr, cc, t);
+    } else {
+      setArc(r, c, t);
     }
+    prev = [r, c];
   }
 
-  // Needle, from the pivot out to the arc.
+  // Needle, a clean Bresenham line from the pivot to the arc.
   if (showNeedle) {
     const tg = 180 - position * 1.8;
+    const tr = Math.round(CY - RY * Math.sin(tg * D2R));
+    const tc = Math.round(CX + RX * Math.cos(tg * D2R));
     const ch = needleChar(tg);
-    for (let s = 0.14; s <= 1.001; s += 0.05) {
-      const c = Math.round(CX + s * RX * Math.cos(tg * D2R));
-      const r = Math.round(CY - s * RY * Math.sin(tg * D2R));
-      put(r, c, { ch, color: "#ffffff", kind: "needle" });
+    for (const [r, c] of linePoints(CY, CX, tr, tc)) {
+      if (Math.hypot(c - CX, r - CY) < 1.5) continue;
+      if (r >= 0 && r < ROWS && c >= 0 && c < COLS) g[r][c] = { ch, color: "#ffffff", kind: "needle" };
     }
   }
 
