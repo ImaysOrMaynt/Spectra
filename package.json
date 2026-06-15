@@ -1,0 +1,26 @@
+{
+  "name": "spectra",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Spectra — an online multiplayer team game in the spirit of Wavelength, with an ASCII/terminal spectral aesthetic.",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n SERVER,CLIENT -c magenta,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev -w @spectra/server",
+    "dev:client": "npm run dev -w @spectra/client",
+    "build": "npm run build -w @spectra/client",
+    "start": "npm run start -w @spectra/server",
+    "typecheck": "npm run typecheck -w @spectra/shared && npm run typecheck -w @spectra/server && npm run typecheck -w @spectra/client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
