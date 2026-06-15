@@ -67,9 +67,25 @@ function buildLambda(height: number): string {
 }
 
 export function Lambda({ height = 12, className = "" }: { height?: number; className?: string }) {
+  const rows = buildLambda(height).split("\n");
+  const width = rows[0]?.length ?? 1;
   return (
-    <pre className={`lambda ${className}`} aria-hidden="true">
-      {buildLambda(height)}
-    </pre>
+    <div className={`lambda ${className}`} aria-hidden="true">
+      {rows.map((line, r) => (
+        <div className="lambda__row" key={r}>
+          {[...line].map((ch, c) => (
+            <span
+              key={c}
+              style={{
+                color: ch === " " ? "transparent" : spectralColor(c / (width - 1)),
+                animationDelay: `${(c / width) * 1.6}s`,
+              }}
+            >
+              {ch === " " ? " " : ch}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }

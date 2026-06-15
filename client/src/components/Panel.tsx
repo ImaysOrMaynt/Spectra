@@ -14,6 +14,18 @@ export function Panel({
 }) {
   return (
     <section className={`panel ${className}`}>
+      <span className="panel__corner panel__corner--tl" aria-hidden="true">
+        ┌
+      </span>
+      <span className="panel__corner panel__corner--tr" aria-hidden="true">
+        ┐
+      </span>
+      <span className="panel__corner panel__corner--bl" aria-hidden="true">
+        └
+      </span>
+      <span className="panel__corner panel__corner--br" aria-hidden="true">
+        ┘
+      </span>
       {(title || right) && (
         <header className="panel__head">
           {title && <span className="panel__title">{title}</span>}
